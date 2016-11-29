@@ -1,8 +1,10 @@
 package ru.ifmo.droid2016.imageapp;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -11,29 +13,27 @@ import android.widget.TextView;
 
 import java.io.File;
 
-import ru.ifmo.droid2016.imageapp.loader.ImageLoader;
-import ru.ifmo.droid2016.imageapp.loader.LoadResult;
-import ru.ifmo.droid2016.imageapp.loader.ResultType;
-import ru.ifmo.droid2016.imageapp.model.Image;
-
 /**
  * Created by Anna Kopeliovich on 26.11.2016.
  */
 
 
-public class ImageActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<LoadResult<Image>> {
+public class ImageActivity extends AppCompatActivity {
 
     private ImageView image;
     private TextView errorMassage;
 
-    public boolean imageDownload = false;
+    public static String BROADCAST_NAME = "BROADCAST";
+    public static String BASE_URL = "https://pp.vk.me/c636222/v636222621/2d7dc/xFK_YmbNLhs.jpg";
 
-    public static String FILE_NAME = "img.jpg";
+    private BroadcastReceiver receiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.layout);
+
+        final String fileName = getFilesDir().getPath() + "/image.jpg";
 
         errorMassage = (TextView) findViewById(R.id.errorText);
         image = (ImageView) findViewById(R.id.image);
@@ -41,40 +41,30 @@ public class ImageActivity extends AppCompatActivity implements LoaderManager.Lo
         errorMassage.setVisibility(View.VISIBLE);
         image.setVisibility(View.GONE);
 
-        final Bundle loaderArgs = getIntent().getExtras();
-        getSupportLoaderManager().initLoader(0, loaderArgs, this);
-    }
 
-    private static final String TAG = "Images";
-
-    @Override
-    public Loader<LoadResult<Image>> onCreateLoader(int id, Bundle args) {
-        return new ImageLoader(this);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<LoadResult<Image>> loader, LoadResult<Image> result) {
-        if (result.resultType == ResultType.OK && result.data != null && result.data.download) {
-            displayNonEmptyData(result.data);
-        } else {
-            displayEmptyData();
+        File f = new File(fileName);
+        if (f.exists()) {
+            image.setImageBitmap(BitmapFactory.decodeFile(f.getPath()));
+            errorMassage.setVisibility(View.GONE);
+            image.setVisibility(View.VISIBLE);
         }
+
+        receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                File f = new File(fileName);
+                image.setImageBitmap(BitmapFactory.decodeFile(f.getPath()));
+                errorMassage.setVisibility(View.GONE);
+                image.setVisibility(View.VISIBLE);
+            }
+        };
+
+        registerReceiver(receiver, new IntentFilter(BROADCAST_NAME));
     }
 
     @Override
-    public void onLoaderReset(Loader<LoadResult<Image>> loader) {
-        displayEmptyData();
-    }
-
-    private void displayEmptyData() {
-        errorMassage.setVisibility(View.VISIBLE);
-        image.setVisibility(View.GONE);
-    }
-
-    private void displayNonEmptyData(Image images) {
-        File f = new File(FILE_NAME);
-        image.setImageBitmap(BitmapFactory.decodeFile(f.getPath()));
-        errorMassage.setVisibility(View.GONE);
-        image.setVisibility(View.VISIBLE);
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(receiver);
     }
 }
